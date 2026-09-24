@@ -1,291 +1,1201 @@
-<!DOCTYPE html>
-<html lang="es">
+<!DOCTYPE html><html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#000000" />
-<title>Flexiones</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; background: #000; color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
-  body { display: flex; flex-direction: column; }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Flexiones AI</title><style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-  .stage { flex: 1; position: relative; overflow: hidden; background: #000; }
-  #video, #canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-  #canvas { pointer-events: none; }
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
 
-  .count {
-    position: absolute; top: 20px; left: 24px; z-index: 10;
-    font-size: 5rem; font-weight: 900; color: #ff6b1a;
-    font-variant-numeric: tabular-nums; line-height: 1;
-    text-shadow: 0 2px 14px rgba(0,0,0,0.75);
-    pointer-events: none;
-  }
+body {
+  display: flex;
+  flex-direction: column;
+}
 
-  .bar {
-    position: absolute; right: 18px; top: 22%; bottom: 22%; width: 14px;
-    background: rgba(255,255,255,0.12); border-radius: 10px; z-index: 10;
-    overflow: hidden; border: 1px solid rgba(255,255,255,0.15);
-  }
-  .bar-fill {
-    position: absolute; left: 0; right: 0; bottom: 0;
-    height: 0%;
-    background: linear-gradient(to top, #ff6b1a, #ffb347);
-    transition: height 0.06s linear;
-  }
-  .bar-fill.full {
-    background: linear-gradient(to top, #22c55e, #7dff9e);
-    box-shadow: 0 0 20px rgba(34,197,94,0.7);
-  }
+.stage {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  background: #000;
+}
 
-  #msg {
-    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-    z-index: 10; font-size: 0.85rem; font-weight: 700;
-    background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 10px;
-    white-space: nowrap; pointer-events: none;
-  }
-  #msg.warn { color: #f59e0b; }
-  #msg.ok { color: #22c55e; }
+#video,
+#canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 
-  .controls {
-    position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-    display: flex; gap: 10px; padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
-    background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
-  }
-  button {
-    flex: 1; padding: 18px; border: none; border-radius: 16px;
-    font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;
-  }
-  button:active { opacity: 0.7; }
-  button:disabled { opacity: 0.5; }
-  #startBtn { background: #ff6b1a; color: #fff; }
-  #startBtn.stop { background: #ef4444; }
-  #resetBtn { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
-</style>
-</head>
-<body>
-  <div class="stage">
-    <video id="video" playsinline muted autoplay></video>
-    <canvas id="canvas"></canvas>
-  </div>
-  <div class="count" id="count">0</div>
-  <div class="bar"><div class="bar-fill" id="barFill"></div></div>
-  <p id="msg">Toca Iniciar</p>
-  <div class="controls">
-    <button id="startBtn">Iniciar</button>
-    <button id="resetBtn">Reiniciar</button>
-  </div>
+#canvas {
+  pointer-events: none;
+}
 
-<script type="module">
-  import { PoseLandmarker, FilesetResolver }
-    from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+.count {
+  position: absolute;
+  top: 18px;
+  left: 22px;
+  z-index: 10;
+  font-size: 5rem;
+  font-weight: 900;
+  color: #ff6b1a;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 3px 16px rgba(0,0,0,.85);
+  pointer-events: none;
+}
 
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const ui = {
-    count: document.getElementById('count'),
-    msg: document.getElementById('msg'),
-    barFill: document.getElementById('barFill'),
-    startBtn: document.getElementById('startBtn'),
-    resetBtn: document.getElementById('resetBtn'),
+.status {
+  position: absolute;
+  top: 25px;
+  right: 22px;
+  z-index: 10;
+  padding: 7px 12px;
+  border-radius: 10px;
+  background: rgba(0,0,0,.65);
+  font-size: .75rem;
+  font-weight: 800;
+  color: #aaa;
+  pointer-events: none;
+}
+
+.bar {
+  position: absolute;
+  right: 17px;
+  top: 22%;
+  bottom: 22%;
+  width: 13px;
+  background: rgba(255,255,255,.12);
+  border-radius: 10px;
+  z-index: 10;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.15);
+}
+
+.bar-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  background: linear-gradient(to top,#ff6b1a,#ffb347);
+  transition: height .08s linear;
+}
+
+.bar-fill.full {
+  background: linear-gradient(to top,#22c55e,#7dff9e);
+  box-shadow: 0 0 18px rgba(34,197,94,.65);
+}
+
+#msg {
+  position: absolute;
+  bottom: 103px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 8px 15px;
+  border-radius: 10px;
+  background: rgba(0,0,0,.68);
+  font-size: .85rem;
+  font-weight: 800;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#msg.warn {
+  color: #f59e0b;
+}
+
+#msg.ok {
+  color: #22c55e;
+}
+
+.controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  gap: 10px;
+  padding: 15px 18px calc(15px + env(safe-area-inset-bottom));
+  background: linear-gradient(to top,rgba(0,0,0,.82),transparent);
+}
+
+button {
+  flex: 1;
+  padding: 17px;
+  border: none;
+  border-radius: 15px;
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:active {
+  opacity: .7;
+}
+
+button:disabled {
+  opacity: .5;
+}
+
+#startBtn {
+  background: #ff6b1a;
+  color: #fff;
+}
+
+#startBtn.stop {
+  background: #ef4444;
+}
+
+#resetBtn {
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,.15);
+}
+</style></head><body><div class="stage">
+  <video id="video" playsinline muted autoplay></video>
+  <canvas id="canvas"></canvas>
+</div><div class="count" id="count">0</div>
+<div class="status" id="status">IDLE</div><div class="bar">
+  <div class="bar-fill" id="barFill"></div>
+</div><p id="msg">Toca Iniciar</p><div class="controls">
+  <button id="startBtn">Iniciar</button>
+  <button id="resetBtn">Reiniciar</button>
+</div><script type="module">
+
+import {
+  PoseLandmarker,
+  FilesetResolver
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d", {
+  alpha: true,
+  desynchronized: true
+});
+
+const ui = {
+  count: document.getElementById("count"),
+  msg: document.getElementById("msg"),
+  barFill: document.getElementById("barFill"),
+  startBtn: document.getElementById("startBtn"),
+  resetBtn: document.getElementById("resetBtn"),
+  status: document.getElementById("status")
+};
+
+
+/* =========================
+   CONFIGURACIÓN
+========================= */
+
+const CFG = {
+
+  /* Ángulos del codo */
+  DOWN: 105,
+  UP: 155,
+
+  /* Zona muerta para evitar rebotes */
+  HYSTERESIS: 7,
+
+  /* Visibilidad mínima */
+  MIN_VISIBILITY: 0.42,
+
+  /* Evita dos repeticiones instantáneas */
+  MIN_REP_MS: 450,
+
+  /* Filtro */
+  SMOOTHING: 0.72,
+
+  /* Cuántas muestras deben confirmar el cambio */
+  STABLE_FRAMES: 2,
+
+  /* Buffer de mediana */
+  BUFFER_SIZE: 5,
+
+  /* No ejecutar IA más rápido que esto */
+  DETECTION_INTERVAL: 66
+};
+
+
+let landmarker = null;
+let stream = null;
+let running = false;
+
+let count = 0;
+let phase = "up";
+
+let smoothAngle = null;
+let angleBuffer = [];
+
+let stableFrames = 0;
+let lastRepAt = 0;
+
+let lastDetection = 0;
+let animationFrame = null;
+
+let audioCtx = null;
+
+
+/* =========================
+   UTILIDADES
+========================= */
+
+function angle3(a, b, c) {
+
+  const v1 = {
+    x: a.x - b.x,
+    y: a.y - b.y,
+    z: (a.z || 0) - (b.z || 0)
   };
 
-  const CFG = {
-    DOWN: 115, UP: 148, HYST: 4,
-    MIN_VIS: 0.35, MIN_REP_MS: 280,
-    SMOOTH: 0.35, STABLE_N: 2, BUFFER_N: 4
+  const v2 = {
+    x: c.x - b.x,
+    y: c.y - b.y,
+    z: (c.z || 0) - (b.z || 0)
   };
 
-  let landmarker = null, stream = null;
-  let running = false, lastVideoTime = -1;
-  let count = 0, phase = 'up', lastRepAt = 0, smooth = null;
-  let stable = 0, buffer = [], audioCtx = null;
+  const dot =
+    v1.x * v2.x +
+    v1.y * v2.y +
+    v1.z * v2.z;
 
-  function angle3(a, b, c) {
-    const v1x = a.x - b.x, v1y = a.y - b.y, v1z = (a.z || 0) - (b.z || 0);
-    const v2x = c.x - b.x, v2y = c.y - b.y, v2z = (c.z || 0) - (b.z || 0);
-    const dot = v1x * v2x + v1y * v2y + v1z * v2z;
-    const m = Math.hypot(v1x, v1y, v1z) * Math.hypot(v2x, v2y, v2z);
-    return m ? Math.acos(Math.max(-1, Math.min(1, dot / m))) * 180 / Math.PI : 0;
-  }
+  const mag1 =
+    Math.hypot(v1.x, v1.y, v1.z);
 
-  function median(arr) {
-    const s = [...arr].sort((a, b) => a - b);
-    return s[Math.floor(s.length / 2)];
-  }
+  const mag2 =
+    Math.hypot(v2.x, v2.y, v2.z);
 
-  function beep() {
-    try {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = 'sine'; o.frequency.value = 920;
-      g.gain.setValueAtTime(0.12, audioCtx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-      o.connect(g).connect(audioCtx.destination);
-      o.start(); o.stop(audioCtx.currentTime + 0.08);
-    } catch (e) {}
-  }
+  if (!mag1 || !mag2) return 180;
 
-  const setMsg = (t, c = '') => { ui.msg.textContent = t; ui.msg.className = c; };
+  const cosine =
+    Math.max(
+      -1,
+      Math.min(1, dot / (mag1 * mag2))
+    );
 
-  async function loadModel() {
-    const fileset = await FilesetResolver.forVisionTasks(
+  return Math.acos(cosine) * 180 / Math.PI;
+}
+
+
+function median(arr) {
+
+  if (!arr.length) return 180;
+
+  const sorted = [...arr].sort((a,b) => a-b);
+
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+
+function clamp(v,min,max) {
+  return Math.max(min,Math.min(max,v));
+}
+
+
+function beep() {
+
+  try {
+
+    audioCtx =
+      audioCtx ||
+      new (window.AudioContext || window.webkitAudioContext)();
+
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+
+    const oscillator = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.value = 880;
+
+    gain.gain.setValueAtTime(
+      0.10,
+      audioCtx.currentTime
+    );
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      audioCtx.currentTime + 0.07
+    );
+
+    oscillator
+      .connect(gain)
+      .connect(audioCtx.destination);
+
+    oscillator.start();
+
+    oscillator.stop(
+      audioCtx.currentTime + 0.07
+    );
+
+  } catch {}
+}
+
+
+function setMsg(text,className="") {
+
+  ui.msg.textContent = text;
+  ui.msg.className = className;
+
+}
+
+
+function resetDetector() {
+
+  count = 0;
+
+  phase = "up";
+
+  smoothAngle = null;
+
+  angleBuffer = [];
+
+  stableFrames = 0;
+
+  lastRepAt = 0;
+
+  ui.count.textContent = "0";
+
+  ui.barFill.style.height = "0%";
+
+  ui.barFill.classList.remove("full");
+
+}
+
+
+/* =========================
+   MODELO
+========================= */
+
+async function loadModel() {
+
+  setMsg("Cargando IA…","warn");
+
+  const fileset =
+    await FilesetResolver.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
     );
-    landmarker = await PoseLandmarker.createFromOptions(fileset, {
-      baseOptions: {
-        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-        delegate: "GPU"
-      },
-      runningMode: "VIDEO", numPoses: 1,
-      minPoseDetectionConfidence: 0.5,
-      minPosePresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5
-    });
-  }
 
-  async function openCamera() {
-    stream = await navigator.mediaDevices.getUserMedia({
+  landmarker =
+    await PoseLandmarker.createFromOptions(
+      fileset,
+      {
+        baseOptions: {
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+
+          delegate: "GPU"
+        },
+
+        runningMode: "VIDEO",
+
+        numPoses: 1,
+
+        minPoseDetectionConfidence: 0.45,
+
+        minPosePresenceConfidence: 0.45,
+
+        minTrackingConfidence: 0.45
+      }
+    );
+
+}
+
+
+/* =========================
+   CÁMARA
+========================= */
+
+async function openCamera() {
+
+  /*
+     environment = cámara trasera
+     user = cámara frontal
+
+     IMPORTANTE:
+     NO hacemos scaleX(-1).
+     Por eso la cámara queda NORMAL,
+     no como espejo.
+  */
+
+  stream =
+    await navigator.mediaDevices.getUserMedia({
+
       audio: false,
-      video: { facingMode: 'user' }
-    });
-    video.srcObject = stream;
-    await video.play();
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-  }
 
-  async function start() {
-    ui.startBtn.disabled = true;
-    try {
-      if (!landmarker) { ui.startBtn.textContent = "Cargando…"; await loadModel(); }
-      ui.startBtn.textContent = "Encendiendo…";
-      await openCamera();
-      running = true;
-      lastVideoTime = -1; smooth = null; buffer = []; phase = 'up'; stable = 0;
-      ui.startBtn.textContent = "Detener";
-      ui.startBtn.classList.add('stop');
-      ui.startBtn.disabled = false;
-      setMsg("Colócate frente a la cámara", '');
-      requestAnimationFrame(loop);
-    } catch (err) {
-      console.error(err);
-      ui.startBtn.disabled = false;
-      ui.startBtn.textContent = "Iniciar";
-      setMsg(err.message, 'warn');
-    }
-  }
+      video: {
+        facingMode: {
+          ideal: "user"
+        },
 
-  function stop() {
-    running = false;
-    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-    video.srcObject = null;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ui.startBtn.textContent = "Iniciar";
-    ui.startBtn.classList.remove('stop');
-    setMsg("Listo", '');
-    ui.barFill.style.height = '0%';
-    ui.barFill.classList.remove('full');
-  }
+        width: {
+          ideal: 640
+        },
 
-  function loop() {
-    if (!running) return;
-    if (video.readyState >= 2 && video.videoWidth && video.currentTime !== lastVideoTime) {
-      lastVideoTime = video.currentTime;
-      try {
-        const res = landmarker.detectForVideo(video, performance.now());
-        handle(res);
-      } catch (e) {}
-    }
-    requestAnimationFrame(loop);
-  }
+        height: {
+          ideal: 480
+        },
 
-  function drawSkeleton(lms) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const W = canvas.width, H = canvas.height;
-    const vis = i => lms[i]?.visibility ?? 0;
-
-    ctx.strokeStyle = '#ff6b1a';
-    ctx.lineWidth = Math.max(6, W / 90);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    const line = (i, j) => {
-      if (vis(i) < 0.3 || vis(j) < 0.3) return;
-      ctx.beginPath();
-      ctx.moveTo(lms[i].x * W, lms[i].y * H);
-      ctx.lineTo(lms[j].x * W, lms[j].y * H);
-      ctx.stroke();
-    };
-    line(11, 12); line(11, 13); line(13, 15); line(12, 14); line(14, 16);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#ff6b1a';
-    ctx.lineWidth = Math.max(2, W / 300);
-    [11, 12, 13, 14, 15, 16].forEach(i => {
-      if (vis(i) < 0.3) return;
-      ctx.beginPath();
-      ctx.arc(lms[i].x * W, lms[i].y * H, Math.max(6, W / 100), 0, Math.PI * 2);
-      ctx.fill(); ctx.stroke();
-    });
-  }
-
-  function handle(res) {
-    const lms = res.landmarks?.[0];
-    const wl = res.worldLandmarks?.[0];
-    if (!lms) { ctx.clearRect(0, 0, canvas.width, canvas.height); setMsg("No te veo 👀", 'warn'); return; }
-    drawSkeleton(lms);
-
-    const vis = i => lms[i]?.visibility ?? 0;
-    const lArmVis = Math.min(vis(11), vis(13), vis(15));
-    const rArmVis = Math.min(vis(12), vis(14), vis(16));
-    if (Math.max(lArmVis, rArmVis) < CFG.MIN_VIS) { setMsg("Brazos visibles 📐", 'warn'); return; }
-
-    const P = (wl && wl.length === lms.length) ? wl : lms;
-    const lElbow = angle3(P[11], P[13], P[15]);
-    const rElbow = angle3(P[12], P[14], P[16]);
-    let rawElbow;
-    if (lArmVis > 0.5 && rArmVis > 0.5) rawElbow = (lElbow + rElbow) / 2;
-    else if (lArmVis > rArmVis) rawElbow = lElbow;
-    else rawElbow = rElbow;
-
-    buffer.push(rawElbow);
-    if (buffer.length > CFG.BUFFER_N) buffer.shift();
-    const med = median(buffer);
-    smooth = smooth === null ? med : smooth * CFG.SMOOTH + med * (1 - CFG.SMOOTH);
-    const elbow = smooth;
-
-    const pct = Math.max(0, Math.min(1, (elbow - CFG.DOWN) / (CFG.UP - CFG.DOWN)));
-    ui.barFill.style.height = (pct * 100).toFixed(1) + '%';
-    if (pct >= 0.97) ui.barFill.classList.add('full');
-    else ui.barFill.classList.remove('full');
-
-    const now = performance.now();
-    if (phase === 'up') {
-      if (elbow < CFG.DOWN - CFG.HYST) {
-        if (++stable >= CFG.STABLE_N && now - lastRepAt > CFG.MIN_REP_MS) { phase = 'down'; stable = 0; }
-      } else stable = 0;
-    } else {
-      if (elbow > CFG.UP + CFG.HYST) {
-        if (++stable >= CFG.STABLE_N) {
-          phase = 'up'; stable = 0; lastRepAt = now; count++;
-          ui.count.textContent = count; beep();
+        frameRate: {
+          ideal: 30,
+          max: 30
         }
-      } else stable = 0;
+      }
+
+    });
+
+  video.srcObject = stream;
+
+  await video.play();
+
+  await new Promise(resolve => {
+
+    if (video.videoWidth) {
+      resolve();
+      return;
     }
 
-    setMsg(phase === 'down' ? "Sube ⬆️" : "Baja ⬇️", 'ok');
+    video.addEventListener(
+      "loadedmetadata",
+      resolve,
+      {once:true}
+    );
+
+  });
+
+
+  /*
+     Canvas usa exactamente la resolución
+     del vídeo para que los landmarks
+     coincidan con la imagen.
+  */
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+}
+
+
+/* =========================
+   DIBUJAR ESQUELETO
+========================= */
+
+function drawSkeleton(lms) {
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+
+  const visible = i =>
+    (lms[i]?.visibility ?? 0) >= 0.28;
+
+
+  ctx.lineWidth = Math.max(4,W / 150);
+
+  ctx.lineCap = "round";
+
+  ctx.lineJoin = "round";
+
+  ctx.strokeStyle = "#ff6b1a";
+
+
+  function line(a,b) {
+
+    if (!visible(a) || !visible(b)) return;
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      lms[a].x * W,
+      lms[a].y * H
+    );
+
+    ctx.lineTo(
+      lms[b].x * W,
+      lms[b].y * H
+    );
+
+    ctx.stroke();
   }
 
-  ui.startBtn.addEventListener('click', () => running ? stop() : start());
-  ui.resetBtn.addEventListener('click', () => {
-    count = 0; phase = 'up'; lastRepAt = 0; smooth = null; stable = 0; buffer = [];
-    ui.count.textContent = "0";
-    ui.barFill.style.height = '0%';
-    ui.barFill.classList.remove('full');
-  });
-</script>
-</body>
+
+  /*
+     Torso
+  */
+
+  line(11,12);
+  line(11,23);
+  line(12,24);
+  line(23,24);
+
+
+  /*
+     Brazos
+  */
+
+  line(11,13);
+  line(13,15);
+
+  line(12,14);
+  line(14,16);
+
+
+  /*
+     Piernas
+  */
+
+  line(23,25);
+  line(25,27);
+
+  line(24,26);
+  line(26,28);
+
+
+  /*
+     Puntos
+  */
+
+  ctx.fillStyle = "#fff";
+
+  ctx.strokeStyle = "#ff6b1a";
+
+  ctx.lineWidth = Math.max(2,W / 350);
+
+
+  const points = [
+    11,12,
+    13,14,
+    15,16,
+    23,24,
+    25,26,
+    27,28
+  ];
+
+
+  for (const i of points) {
+
+    if (!visible(i)) continue;
+
+    ctx.beginPath();
+
+    ctx.arc(
+      lms[i].x * W,
+      lms[i].y * H,
+      Math.max(5,W / 115),
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+
+    ctx.stroke();
+
+  }
+
+}
+
+
+/* =========================
+   SELECCIÓN DEL BRAZO
+========================= */
+
+function getArmData(lms) {
+
+  const vis = i =>
+    lms[i]?.visibility ?? 0;
+
+
+  const left =
+    Math.min(
+      vis(11),
+      vis(13),
+      vis(15)
+    );
+
+
+  const right =
+    Math.min(
+      vis(12),
+      vis(14),
+      vis(16)
+    );
+
+
+  return {
+    left,
+    right
+  };
+
+}
+
+
+/* =========================
+   PROCESAMIENTO
+========================= */
+
+function handlePose(result) {
+
+  const lms =
+    result.landmarks?.[0];
+
+
+  if (!lms) {
+
+    ctx.clearRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    ui.status.textContent = "NO POSE";
+
+    setMsg(
+      "No te veo 👀",
+      "warn"
+    );
+
+    return;
+
+  }
+
+
+  drawSkeleton(lms);
+
+
+  const {
+    left,
+    right
+  } = getArmData(lms);
+
+
+  if (
+    Math.max(left,right)
+    < CFG.MIN_VISIBILITY
+  ) {
+
+    ui.status.textContent =
+      "BRAZOS NO VISIBLES";
+
+    setMsg(
+      "Pon los brazos completos en cámara",
+      "warn"
+    );
+
+    return;
+
+  }
+
+
+  /*
+     Elegimos el brazo con mejor
+     visibilidad en vez de promediar
+     ambos siempre.
+
+     Esto evita que un brazo parcialmente
+     oculto destruya el cálculo.
+  */
+
+  let side;
+
+  if (left >= right) {
+    side = "left";
+  } else {
+    side = "right";
+  }
+
+
+  const shoulder =
+    side === "left" ? 11 : 12;
+
+  const elbow =
+    side === "left" ? 13 : 14;
+
+  const wrist =
+    side === "left" ? 15 : 16;
+
+
+  const angle =
+    angle3(
+      lms[shoulder],
+      lms[elbow],
+      lms[wrist]
+    );
+
+
+  /*
+     Filtro de mediana
+     para eliminar pequeños saltos.
+  */
+
+  angleBuffer.push(angle);
+
+  if (
+    angleBuffer.length >
+    CFG.BUFFER_SIZE
+  ) {
+    angleBuffer.shift();
+  }
+
+
+  const filtered =
+    median(angleBuffer);
+
+
+  /*
+     EMA:
+     suaviza todavía más,
+     pero sin meter demasiado retraso.
+  */
+
+  if (smoothAngle === null) {
+
+    smoothAngle = filtered;
+
+  } else {
+
+    smoothAngle =
+      smoothAngle * CFG.SMOOTHING +
+      filtered * (1-CFG.SMOOTHING);
+
+  }
+
+
+  const elbowAngle =
+    smoothAngle;
+
+
+  /*
+     Barra:
+
+     105° = abajo
+     155° = arriba
+  */
+
+  const percentage =
+    clamp(
+      (elbowAngle - CFG.DOWN) /
+      (CFG.UP - CFG.DOWN),
+      0,
+      1
+    );
+
+
+  ui.barFill.style.height =
+    `${(percentage * 100).toFixed(0)}%`;
+
+
+  if (percentage >= .95) {
+
+    ui.barFill.classList.add("full");
+
+  } else {
+
+    ui.barFill.classList.remove("full");
+
+  }
+
+
+  ui.status.textContent =
+    `${Math.round(elbowAngle)}°`;
+
+
+  const now =
+    performance.now();
+
+
+  /*
+     ============================
+     MÁQUINA DE ESTADOS
+     ============================
+
+     UP
+       ↓
+     codo <= 98°
+       ↓
+     DOWN
+       ↓
+     codo >= 162°
+       ↓
+     cuenta +1
+       ↓
+     UP
+  */
+
+
+  if (phase === "up") {
+
+    if (
+      elbowAngle <=
+      CFG.DOWN - CFG.HYSTERESIS
+    ) {
+
+      stableFrames++;
+
+      if (
+        stableFrames >=
+        CFG.STABLE_FRAMES
+      ) {
+
+        phase = "down";
+
+        stableFrames = 0;
+
+        setMsg(
+          "¡Sube! ⬆️",
+          "ok"
+        );
+
+      }
+
+    } else {
+
+      stableFrames = 0;
+
+      setMsg(
+        "Baja ⬇️",
+        "ok"
+      );
+
+    }
+
+  } else {
+
+
+    if (
+      elbowAngle >=
+      CFG.UP + CFG.HYSTERESIS
+    ) {
+
+      stableFrames++;
+
+      if (
+        stableFrames >=
+        CFG.STABLE_FRAMES
+      ) {
+
+        if (
+          now-lastRepAt >=
+          CFG.MIN_REP_MS
+        ) {
+
+          count++;
+
+          ui.count.textContent =
+            count;
+
+          beep();
+
+          lastRepAt = now;
+
+        }
+
+
+        phase = "up";
+
+        stableFrames = 0;
+
+        setMsg(
+          "Repetición ✔",
+          "ok"
+        );
+
+      }
+
+    } else {
+
+      stableFrames = 0;
+
+      setMsg(
+        "Sube ⬆️",
+        "ok"
+      );
+
+    }
+
+  }
+
+}
+
+
+/* =========================
+   LOOP OPTIMIZADO
+========================= */
+
+function loop(timestamp) {
+
+  if (!running) return;
+
+
+  /*
+     El navegador puede dibujar a 60/90/120 Hz,
+     pero la IA NO necesita analizar todos esos frames.
+
+     La interfaz sigue fluida,
+     mientras la IA trabaja ~15 FPS.
+  */
+
+  if (
+    timestamp-lastDetection >=
+    CFG.DETECTION_INTERVAL
+  ) {
+
+    if (
+      video.readyState >= 2 &&
+      video.videoWidth &&
+      video.currentTime
+    ) {
+
+      lastDetection = timestamp;
+
+      try {
+
+        const result =
+          landmarker.detectForVideo(
+            video,
+            timestamp
+          );
+
+        handlePose(result);
+
+      } catch (error) {
+
+        console.warn(
+          "Pose error:",
+          error
+        );
+
+      }
+
+    }
+
+  }
+
+
+  animationFrame =
+    requestAnimationFrame(loop);
+
+}
+
+
+/* =========================
+   INICIAR
+========================= */
+
+async function start() {
+
+  ui.startBtn.disabled = true;
+
+
+  try {
+
+    if (!landmarker) {
+
+      ui.startBtn.textContent =
+        "Cargando…";
+
+      await loadModel();
+
+    }
+
+
+    ui.startBtn.textContent =
+      "Cámara…";
+
+
+    await openCamera();
+
+
+    resetDetector();
+
+
+    running = true;
+
+    lastDetection = 0;
+
+
+    ui.startBtn.textContent =
+      "Detener";
+
+    ui.startBtn.classList.add("stop");
+
+    ui.startBtn.disabled = false;
+
+
+    setMsg(
+      "Colócate de lado y empieza",
+      ""
+    );
+
+
+    ui.status.textContent =
+      "READY";
+
+
+    animationFrame =
+      requestAnimationFrame(loop);
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    running = false;
+
+    ui.startBtn.disabled = false;
+
+    ui.startBtn.textContent =
+      "Iniciar";
+
+    setMsg(
+      error?.message ||
+      "No se pudo abrir la cámara",
+      "warn"
+    );
+
+  }
+
+}
+
+
+/* =========================
+   DETENER
+========================= */
+
+function stop() {
+
+  running = false;
+
+
+  if (animationFrame) {
+
+    cancelAnimationFrame(
+      animationFrame
+    );
+
+    animationFrame = null;
+
+  }
+
+
+  if (stream) {
+
+    stream
+      .getTracks()
+      .forEach(track =>
+        track.stop()
+      );
+
+    stream = null;
+
+  }
+
+
+  video.srcObject = null;
+
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  ui.startBtn.textContent =
+    "Iniciar";
+
+  ui.startBtn.classList.remove(
+    "stop"
+  );
+
+
+  ui.startBtn.disabled = false;
+
+
+  ui.status.textContent =
+    "IDLE";
+
+
+  ui.barFill.style.height =
+    "0%";
+
+  ui.barFill.classList.remove(
+    "full"
+  );
+
+
+  setMsg(
+    "Listo",
+    ""
+  );
+
+}
+
+
+/* =========================
+   BOTONES
+========================= */
+
+ui.startBtn.addEventListener(
+  "click",
+  () => {
+
+    if (running) {
+      stop();
+    } else {
+      start();
+    }
+
+  }
+);
+
+
+ui.resetBtn.addEventListener(
+  "click",
+  () => {
+
+    resetDetector();
+
+    if (running) {
+
+      setMsg(
+        "Contador reiniciado",
+        "ok"
+      );
+
+    }
+
+  }
+);
+
+</script></body>
 </html>

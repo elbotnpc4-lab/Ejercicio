@@ -8,260 +8,391 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: #000; color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
-  body { display: flex; flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; }
+  body { display: flex; flex-direction: column; }
 
-  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; }
-  #count { font-size: 3rem; font-weight: 900; color: #22d3ee; font-variant-numeric: tabular-nums; line-height: 1; }
-  #msg { font-size: 0.85rem; color: #888; text-align: right; max-width: 55%; }
-  #msg.warn { color: #f59e0b; }
-  #msg.ok { color: #22c55e; }
-
-  .stage { flex: 1; position: relative; overflow: hidden; background: #000; transform: scaleX(-1); }
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; gap: 12px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.65), transparent);
+    pointer-events: none;
+  }
+  .topbar > * { pointer-events: auto; }
+  .count {
+    font-size: 4rem; font-weight: 900; color: #ff6b1a;
+    font-variant-numeric: tabular-nums; line-height: 1;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+  }
+  .timer {
+    font-size: 2.2rem; font-weight: 900; color: #fff;
+    font-variant-numeric: tabular-nums;
+    background: rgba(0,0,0,0.4); padding: 6px 18px; border-radius: 14px;
+    backdrop-filter: blur(8px);
+  }
+  .stage { flex: 1; position: relative; overflow: hidden; background: #000; }
   #video, #canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   #canvas { pointer-events: none; }
 
-  .controls { display: flex; gap: 10px; padding: 14px 20px; }
-  button { flex: 1; padding: 18px; border: none; border-radius: 14px; font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit; transition: opacity 0.15s; }
+  .switch {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1.3rem; cursor: pointer; backdrop-filter: blur(6px);
+  }
+  .switch:active { transform: scale(0.92); }
+
+  .controls {
+    position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
+    display: flex; gap: 10px; padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+    background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  }
+  button {
+    flex: 1; padding: 18px; border: none; border-radius: 16px;
+    font-size: 1rem; font-weight: 800; cursor: pointer; font-family: inherit;
+    transition: opacity 0.15s;
+  }
   button:active { opacity: 0.7; }
   button:disabled { opacity: 0.5; }
-  #startBtn { background: #22d3ee; color: #000; }
-  #startBtn.stop { background: #ef4444; color: #fff; }
-  #resetBtn { background: #1a1a1a; color: #fff; }
+  #startBtn { background: #ff6b1a; color: #fff; }
+  #startBtn.stop { background: #ef4444; }
+  #resetBtn { background: rgba(255,255,255,0.12); color: #fff; backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.15); }
+
+  #msg {
+    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+    z-index: 10; font-size: 0.85rem; font-weight: 700;
+    background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 10px;
+    backdrop-filter: blur(6px); white-space: nowrap;
+  }
+  #msg.warn { color: #f59e0b; }
+  #msg.ok { color: #22c55e; }
 </style>
 </head>
 <body>
-
-  <header>
-    <span id="count">0</span>
-    <span id="msg">Listo</span>
-  </header>
 
   <div class="stage">
     <video id="video" playsinline muted></video>
     <canvas id="canvas"></canvas>
   </div>
 
+  <div class="topbar">
+    <div class="switch" id="switchBtn" title="Cambiar cámara">🔄</div>
+    <div class="count" id="count">0</div>
+    <div class="timer" id="timer">0:00</div>
+  </div>
+
+  <p id="msg">Toca Iniciar</p>
+
   <div class="controls">
     <button id="startBtn">Iniciar</button>
     <button id="resetBtn">Reiniciar</button>
   </div>
 
-  <script type="module">
-    import { PoseLandmarker, FilesetResolver, DrawingUtils }
-      from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+<script type="module">
+  import { PoseLandmarker, FilesetResolver, DrawingUtils }
+    from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const ui = {
-      count: document.getElementById('count'),
-      msg: document.getElementById('msg'),
-      startBtn: document.getElementById('startBtn'),
-      resetBtn: document.getElementById('resetBtn'),
-    };
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const ui = {
+    count: document.getElementById('count'),
+    timer: document.getElementById('timer'),
+    msg: document.getElementById('msg'),
+    startBtn: document.getElementById('startBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    switchBtn: document.getElementById('switchBtn'),
+  };
 
-    const CFG = {
-      DOWN: 90, UP: 160, HYST: 6, MIN_VIS: 0.5,
-      MIN_REP_MS: 320, SMOOTH: 0.7, STABLE_N: 3, BUFFER_N: 5
-    };
+  const CFG = {
+    DOWN: 95,
+    UP: 155,
+    HYST: 5,
+    MIN_VIS: 0.45,
+    MIN_REP_MS: 350,
+    SMOOTH: 0.7,
+    STABLE_N: 3,
+    BUFFER_N: 5
+  };
 
-    let landmarker = null, drawing = null, stream = null;
-    let running = false, lastVideoTime = -1;
-    let count = 0, phase = 'up', lastRepAt = 0, smooth = null;
-    let stable = 0, buffer = [], audioCtx = null;
+  let landmarker = null, drawing = null, stream = null;
+  let running = false, lastVideoTime = -1;
+  let count = 0, phase = 'up', lastRepAt = 0, smooth = null;
+  let stable = 0, buffer = [], audioCtx = null;
+  let facing = 'user';
+  let timerStart = 0, timerInterval = null, elapsed = 0;
 
-    function angle3(a, b, c) {
-      const v1x = a.x - b.x, v1y = a.y - b.y, v1z = (a.z || 0) - (b.z || 0);
-      const v2x = c.x - b.x, v2y = c.y - b.y, v2z = (c.z || 0) - (b.z || 0);
-      const dot = v1x * v2x + v1y * v2y + v1z * v2z;
-      const m = Math.hypot(v1x, v1y, v1z) * Math.hypot(v2x, v2y, v2z);
-      return m ? Math.acos(Math.max(-1, Math.min(1, dot / m))) * 180 / Math.PI : 0;
+  function angle3(a, b, c) {
+    const v1x = a.x - b.x, v1y = a.y - b.y, v1z = (a.z || 0) - (b.z || 0);
+    const v2x = c.x - b.x, v2y = c.y - b.y, v2z = (c.z || 0) - (b.z || 0);
+    const dot = v1x * v2x + v1y * v2y + v1z * v2z;
+    const m = Math.hypot(v1x, v1y, v1z) * Math.hypot(v2x, v2y, v2z);
+    return m ? Math.acos(Math.max(-1, Math.min(1, dot / m))) * 180 / Math.PI : 0;
+  }
+
+  function median(arr) {
+    const s = [...arr].sort((a, b) => a - b);
+    return s[Math.floor(s.length / 2)];
+  }
+
+  function beep() {
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine';
+      o.frequency.value = 920;
+      g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+      o.connect(g).connect(audioCtx.destination);
+      o.start();
+      o.stop(audioCtx.currentTime + 0.08);
+    } catch (e) {}
+  }
+
+  const setMsg = (t, c = '') => {
+    ui.msg.textContent = t;
+    ui.msg.className = c;
+  };
+
+  function fmtTime(s) {
+    const m = Math.floor(s / 60);
+    const ss = String(s % 60).padStart(2, '0');
+    return m + ':' + ss;
+  }
+
+  function startTimer() {
+    timerStart = Date.now() - elapsed;
+    timerInterval = setInterval(() => {
+      elapsed = Math.floor((Date.now() - timerStart) / 1000);
+      ui.timer.textContent = fmtTime(elapsed);
+    }, 250);
+  }
+
+  function stopTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+  }
+
+  async function loadModel() {
+    const fileset = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    );
+    landmarker = await PoseLandmarker.createFromOptions(fileset, {
+      baseOptions: {
+        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+        delegate: "GPU"
+      },
+      runningMode: "VIDEO",
+      numPoses: 1,
+      minPoseDetectionConfidence: 0.6,
+      minPosePresenceConfidence: 0.6,
+      minTrackingConfidence: 0.6
+    });
+    drawing = new DrawingUtils(ctx);
+  }
+
+  async function openCamera() {
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: facing }
+    });
+    video.srcObject = stream;
+    await video.play();
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+  }
+
+  async function start() {
+    ui.startBtn.disabled = true;
+    try {
+      if (!landmarker) {
+        ui.startBtn.textContent = "Cargando…";
+        await loadModel();
+      }
+      ui.startBtn.textContent = "Encendiendo…";
+      await openCamera();
+
+      running = true;
+      lastVideoTime = -1;
+      smooth = null;
+      buffer = [];
+      phase = 'up';
+      stable = 0;
+      elapsed = 0;
+      ui.timer.textContent = '0:00';
+      startTimer();
+
+      ui.startBtn.textContent = "Detener";
+      ui.startBtn.classList.add('stop');
+      ui.startBtn.disabled = false;
+      setMsg("Colócate frente o de lado", '');
+
+      requestAnimationFrame(loop);
+    } catch (err) {
+      console.error(err);
+      ui.startBtn.disabled = false;
+      ui.startBtn.textContent = "Iniciar";
+      setMsg(err.message, 'warn');
     }
+  }
 
-    function median(arr) {
-      const s = [...arr].sort((a, b) => a - b);
-      return s[Math.floor(s.length / 2)];
-    }
+  function stop() {
+    running = false;
+    stopTimer();
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    video.srcObject = null;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ui.startBtn.textContent = "Iniciar";
+    ui.startBtn.classList.remove('stop');
+    setMsg("Listo", '');
+  }
 
-    function beep() {
+  function loop() {
+    if (!running) return;
+    if (video.readyState >= 2 && video.videoWidth && video.currentTime !== lastVideoTime) {
+      lastVideoTime = video.currentTime;
       try {
-        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        o.type = 'sine';
-        o.frequency.value = 920;
-        g.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
-        o.connect(g).connect(audioCtx.destination);
-        o.start();
-        o.stop(audioCtx.currentTime + 0.08);
+        const res = landmarker.detectForVideo(video, performance.now());
+        handle(res);
       } catch (e) {}
     }
+    requestAnimationFrame(loop);
+  }
 
-    const setMsg = (t, c = '') => {
-      ui.msg.textContent = t;
-      ui.msg.className = c;
+  function drawSkeleton(lms) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const W = canvas.width, H = canvas.height;
+
+    const drawLine = (i, j) => {
+      const a = lms[i], b = lms[j];
+      if (!a || !b) return;
+      if ((a.visibility ?? 0) < 0.35 || (b.visibility ?? 0) < 0.35) return;
+      ctx.beginPath();
+      ctx.moveTo(a.x * W, a.y * H);
+      ctx.lineTo(b.x * W, b.y * H);
+      ctx.stroke();
     };
 
-    async function loadModel() {
-      const fileset = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
-      );
-      landmarker = await PoseLandmarker.createFromOptions(fileset, {
-        baseOptions: {
-          modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
-          delegate: "GPU"
-        },
-        runningMode: "VIDEO",
-        numPoses: 1,
-        minPoseDetectionConfidence: 0.6,
-        minPosePresenceConfidence: 0.6,
-        minTrackingConfidence: 0.6
-      });
-      drawing = new DrawingUtils(ctx);
-    }
+    ctx.strokeStyle = '#ff6b1a';
+    ctx.lineWidth = Math.max(6, W / 90);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-    async function start() {
-      ui.startBtn.disabled = true;
-      try {
-        if (!landmarker) {
-          ui.startBtn.textContent = "Cargando…";
-          await loadModel();
-        }
-        ui.startBtn.textContent = "Encendiendo…";
+    const BONES = [
+      [11, 12], [11, 13], [13, 15],
+      [12, 14], [14, 16],
+      [11, 23], [12, 24], [23, 24],
+      [23, 25], [25, 27], [24, 26], [26, 28]
+    ];
+    BONES.forEach(([i, j]) => drawLine(i, j));
 
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: { facingMode: 'user' }
-        });
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#ff6b1a';
+    ctx.lineWidth = Math.max(2, W / 300);
+    const POINTS = [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28];
+    POINTS.forEach(i => {
+      const p = lms[i];
+      if (!p || (p.visibility ?? 0) < 0.35) return;
+      ctx.beginPath();
+      ctx.arc(p.x * W, p.y * H, Math.max(5, W / 110), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
 
-        video.srcObject = stream;
-        await video.play();
+  function handle(res) {
+    const lms = res.landmarks?.[0];
+    const wl = res.worldLandmarks?.[0];
 
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        running = true;
-        lastVideoTime = -1;
-        smooth = null;
-        buffer = [];
-        phase = 'up';
-        stable = 0;
-
-        ui.startBtn.textContent = "Detener";
-        ui.startBtn.classList.add('stop');
-        ui.startBtn.disabled = false;
-        setMsg("Colócate de lado", '');
-
-        requestAnimationFrame(loop);
-      } catch (err) {
-        console.error(err);
-        ui.startBtn.disabled = false;
-        ui.startBtn.textContent = "Iniciar";
-        setMsg(err.message, 'warn');
-      }
-    }
-
-    function stop() {
-      running = false;
-      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
-      video.srcObject = null;
+    if (!lms) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ui.startBtn.textContent = "Iniciar";
-      ui.startBtn.classList.remove('stop');
-      setMsg("Listo", '');
+      setMsg("No te veo 👀", 'warn');
+      return;
     }
 
-    function loop() {
-      if (!running) return;
-      if (video.readyState >= 2 && video.videoWidth && video.currentTime !== lastVideoTime) {
-        lastVideoTime = video.currentTime;
-        try {
-          const res = landmarker.detectForVideo(video, performance.now());
-          handle(res);
-        } catch (e) {}
-      }
-      requestAnimationFrame(loop);
+    drawSkeleton(lms);
+
+    const vis = i => lms[i]?.visibility ?? 0;
+    const lElbowVis = (vis(11) + vis(13) + vis(15)) / 3;
+    const rElbowVis = (vis(12) + vis(14) + vis(16)) / 3;
+    const useLeft = lElbowVis >= rElbowVis;
+    const side = useLeft
+      ? { s: 11, e: 13, w: 15, h: 23, k: 27 }
+      : { s: 12, e: 14, w: 16, h: 24, k: 28 };
+
+    const armVis = Math.min(vis(side.s), vis(side.e), vis(side.w));
+    if (armVis < CFG.MIN_VIS) {
+      setMsg("Colócate frente o de lado 📐", 'warn');
+      return;
     }
 
-    function handle(res) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const lms = res.landmarks?.[0];
-      const wl = res.worldLandmarks?.[0];
-      if (!lms) {
-        setMsg("No te veo 👀", 'warn');
-        return;
-      }
+    const P = (wl && wl.length === lms.length) ? wl : lms;
+    const rawElbow = angle3(P[side.s], P[side.e], P[side.w]);
 
-      if (drawing) {
-        drawing.drawConnectors(lms, PoseLandmarker.POSE_CONNECTIONS, { color: "#22d3ee", lineWidth: 3 });
-        drawing.drawLandmarks(lms, { color: "#ffffff", fillColor: "#22d3ee", radius: 3, lineWidth: 0 });
-      }
+    buffer.push(rawElbow);
+    if (buffer.length > CFG.BUFFER_N) buffer.shift();
+    const med = median(buffer);
 
-      const vis = i => lms[i]?.visibility ?? 0;
-      const lS = (vis(11) + vis(13) + vis(15) + vis(23)) / 4;
-      const rS = (vis(12) + vis(14) + vis(16) + vis(24)) / 4;
-      const side = lS >= rS
-        ? { s: 11, e: 13, w: 15, h: 23, k: 27 }
-        : { s: 12, e: 14, w: 16, h: 24, k: 28 };
+    smooth = smooth === null ? med : smooth * CFG.SMOOTH + med * (1 - CFG.SMOOTH);
+    const elbow = smooth;
 
-      const minVis = Math.min(vis(side.s), vis(side.e), vis(side.w), vis(side.h), vis(side.k));
-      if (minVis < CFG.MIN_VIS) {
-        setMsg("De lado, cuerpo completo", 'warn');
-        return;
-      }
-
-      const P = (wl && wl.length === lms.length) ? wl : lms;
-      const rawElbow = angle3(P[side.s], P[side.e], P[side.w]);
-      const bodyAng = angle3(P[side.s], P[side.h], P[side.k]);
-
-      buffer.push(rawElbow);
-      if (buffer.length > CFG.BUFFER_N) buffer.shift();
-      const med = median(buffer);
-
-      smooth = smooth === null ? med : smooth * CFG.SMOOTH + med * (1 - CFG.SMOOTH);
-      const elbow = smooth;
-
-      const now = performance.now();
-      if (phase === 'up') {
-        if (elbow < CFG.DOWN - CFG.HYST) {
-          if (++stable >= CFG.STABLE_N && now - lastRepAt > CFG.MIN_REP_MS) {
-            phase = 'down';
-            stable = 0;
-          }
-        } else {
+    const now = performance.now();
+    if (phase === 'up') {
+      if (elbow < CFG.DOWN - CFG.HYST) {
+        if (++stable >= CFG.STABLE_N && now - lastRepAt > CFG.MIN_REP_MS) {
+          phase = 'down';
           stable = 0;
         }
       } else {
-        if (elbow > CFG.UP + CFG.HYST) {
-          if (++stable >= CFG.STABLE_N) {
-            phase = 'up';
-            stable = 0;
-            lastRepAt = now;
-            count++;
-            ui.count.textContent = count;
-            beep();
-          }
-        } else {
-          stable = 0;
-        }
+        stable = 0;
       }
-
-      const aligned = bodyAng > 150;
-      if (aligned) setMsg("Abajo ⬇️", 'ok');
-      else setMsg("Espalda recta ⚠️", 'warn');
+    } else {
+      if (elbow > CFG.UP + CFG.HYST) {
+        if (++stable >= CFG.STABLE_N) {
+          phase = 'up';
+          stable = 0;
+          lastRepAt = now;
+          count++;
+          ui.count.textContent = count;
+          beep();
+        }
+      } else {
+        stable = 0;
+      }
     }
 
-    ui.startBtn.addEventListener('click', () => running ? stop() : start());
-    ui.resetBtn.addEventListener('click', () => {
-      count = 0;
-      phase = 'up';
-      lastRepAt = 0;
-      smooth = null;
-      stable = 0;
-      buffer = [];
-      ui.count.textContent = "0";
-    });
-  </script>
+    setMsg(phase === 'down' ? "Abajo ⬇️" : "Arriba ⬆️", 'ok');
+  }
+
+  ui.startBtn.addEventListener('click', () => running ? stop() : start());
+
+  ui.resetBtn.addEventListener('click', () => {
+    count = 0;
+    phase = 'up';
+    lastRepAt = 0;
+    smooth = null;
+    stable = 0;
+    buffer = [];
+    elapsed = 0;
+    ui.count.textContent = "0";
+    ui.timer.textContent = "0:00";
+    if (running) {
+      stopTimer();
+      startTimer();
+    }
+  });
+
+  ui.switchBtn.addEventListener('click', async () => {
+    facing = facing === 'user' ? 'environment' : 'user';
+    if (running) {
+      try {
+        await openCamera();
+      } catch (e) {
+        setMsg("No se pudo cambiar", 'warn');
+      }
+    }
+  });
+</script>
 </body>
 </html>

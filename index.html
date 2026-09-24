@@ -10,8 +10,8 @@
   html, body { height: 100%; background: #000; color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
   body { display: flex; flex-direction: column; }
 
-  .stage { flex: 1; position: relative; overflow: hidden; background: #000; }
-  #video, #canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .stage { flex: 1; position: relative; overflow: hidden; background: #000; transform: scaleX(-1); }
+  #video, #canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
   #canvas { pointer-events: none; }
 
   .count {
@@ -20,12 +20,14 @@
     font-variant-numeric: tabular-nums; line-height: 1;
     text-shadow: 0 2px 14px rgba(0,0,0,0.75);
     pointer-events: none;
+    transform: scaleX(-1);
   }
 
   .bar {
     position: absolute; right: 18px; top: 22%; bottom: 22%; width: 14px;
     background: rgba(255,255,255,0.12); border-radius: 10px; z-index: 10;
     overflow: hidden; border: 1px solid rgba(255,255,255,0.15);
+    transform: scaleX(-1);
   }
   .bar-fill {
     position: absolute; left: 0; right: 0; bottom: 0;
@@ -39,7 +41,7 @@
   }
 
   #msg {
-    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%) scaleX(-1);
     z-index: 10; font-size: 0.85rem; font-weight: 700;
     background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 10px;
     white-space: nowrap; pointer-events: none;
@@ -51,6 +53,7 @@
     position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
     display: flex; gap: 10px; padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
     background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+    transform: scaleX(-1);
   }
   button {
     flex: 1; padding: 18px; border: none; border-radius: 16px;
@@ -92,14 +95,9 @@
   };
 
   const CFG = {
-    DOWN: 115,
-    UP: 148,
-    HYST: 4,
-    MIN_VIS: 0.35,
-    MIN_REP_MS: 280,
-    SMOOTH: 0.35,
-    STABLE_N: 2,
-    BUFFER_N: 4
+    DOWN: 115, UP: 148, HYST: 4,
+    MIN_VIS: 0.35, MIN_REP_MS: 280,
+    SMOOTH: 0.35, STABLE_N: 2, BUFFER_N: 4
   };
 
   let landmarker = null, stream = null;
@@ -125,20 +123,15 @@
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       const o = audioCtx.createOscillator();
       const g = audioCtx.createGain();
-      o.type = 'sine';
-      o.frequency.value = 920;
+      o.type = 'sine'; o.frequency.value = 920;
       g.gain.setValueAtTime(0.12, audioCtx.currentTime);
       g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
       o.connect(g).connect(audioCtx.destination);
-      o.start();
-      o.stop(audioCtx.currentTime + 0.08);
+      o.start(); o.stop(audioCtx.currentTime + 0.08);
     } catch (e) {}
   }
 
-  const setMsg = (t, c = '') => {
-    ui.msg.textContent = t;
-    ui.msg.className = c;
-  };
+  const setMsg = (t, c = '') => { ui.msg.textContent = t; ui.msg.className = c; };
 
   async function loadModel() {
     const fileset = await FilesetResolver.forVisionTasks(
@@ -149,8 +142,7 @@
         modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
         delegate: "GPU"
       },
-      runningMode: "VIDEO",
-      numPoses: 1,
+      runningMode: "VIDEO", numPoses: 1,
       minPoseDetectionConfidence: 0.5,
       minPosePresenceConfidence: 0.5,
       minTrackingConfidence: 0.5
@@ -160,7 +152,7 @@
   async function openCamera() {
     stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }
+      video: { facingMode: 'user' }
     });
     video.srcObject = stream;
     await video.play();
@@ -171,25 +163,15 @@
   async function start() {
     ui.startBtn.disabled = true;
     try {
-      if (!landmarker) {
-        ui.startBtn.textContent = "Cargando…";
-        await loadModel();
-      }
+      if (!landmarker) { ui.startBtn.textContent = "Cargando…"; await loadModel(); }
       ui.startBtn.textContent = "Encendiendo…";
       await openCamera();
-
       running = true;
-      lastVideoTime = -1;
-      smooth = null;
-      buffer = [];
-      phase = 'up';
-      stable = 0;
-
+      lastVideoTime = -1; smooth = null; buffer = []; phase = 'up'; stable = 0;
       ui.startBtn.textContent = "Detener";
       ui.startBtn.classList.add('stop');
       ui.startBtn.disabled = false;
       setMsg("Colócate frente a la cámara", '');
-
       requestAnimationFrame(loop);
     } catch (err) {
       console.error(err);
@@ -240,10 +222,7 @@
       ctx.lineTo(lms[j].x * W, lms[j].y * H);
       ctx.stroke();
     };
-
-    line(11, 12);
-    line(11, 13); line(13, 15);
-    line(12, 14); line(14, 16);
+    line(11, 12); line(11, 13); line(13, 15); line(12, 14); line(14, 16);
 
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#ff6b1a';
@@ -252,95 +231,60 @@
       if (vis(i) < 0.3) return;
       ctx.beginPath();
       ctx.arc(lms[i].x * W, lms[i].y * H, Math.max(6, W / 100), 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      ctx.fill(); ctx.stroke();
     });
   }
 
   function handle(res) {
     const lms = res.landmarks?.[0];
     const wl = res.worldLandmarks?.[0];
-
-    if (!lms) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      setMsg("No te veo 👀", 'warn');
-      return;
-    }
-
+    if (!lms) { ctx.clearRect(0, 0, canvas.width, canvas.height); setMsg("No te veo 👀", 'warn'); return; }
     drawSkeleton(lms);
 
     const vis = i => lms[i]?.visibility ?? 0;
     const lArmVis = Math.min(vis(11), vis(13), vis(15));
     const rArmVis = Math.min(vis(12), vis(14), vis(16));
-
-    if (Math.max(lArmVis, rArmVis) < CFG.MIN_VIS) {
-      setMsg("Brazos visibles 📐", 'warn');
-      return;
-    }
+    if (Math.max(lArmVis, rArmVis) < CFG.MIN_VIS) { setMsg("Brazos visibles 📐", 'warn'); return; }
 
     const P = (wl && wl.length === lms.length) ? wl : lms;
     const lElbow = angle3(P[11], P[13], P[15]);
     const rElbow = angle3(P[12], P[14], P[16]);
-
     let rawElbow;
-    if (lArmVis > 0.5 && rArmVis > 0.5) {
-      rawElbow = (lElbow + rElbow) / 2;
-    } else if (lArmVis > rArmVis) {
-      rawElbow = lElbow;
-    } else {
-      rawElbow = rElbow;
-    }
+    if (lArmVis > 0.5 && rArmVis > 0.5) rawElbow = (lElbow + rElbow) / 2;
+    else if (lArmVis > rArmVis) rawElbow = lElbow;
+    else rawElbow = rElbow;
 
     buffer.push(rawElbow);
     if (buffer.length > CFG.BUFFER_N) buffer.shift();
     const med = median(buffer);
-
     smooth = smooth === null ? med : smooth * CFG.SMOOTH + med * (1 - CFG.SMOOTH);
     const elbow = smooth;
 
     const pct = Math.max(0, Math.min(1, (elbow - CFG.DOWN) / (CFG.UP - CFG.DOWN)));
     ui.barFill.style.height = (pct * 100).toFixed(1) + '%';
-
     if (pct >= 0.97) ui.barFill.classList.add('full');
     else ui.barFill.classList.remove('full');
 
     const now = performance.now();
     if (phase === 'up') {
       if (elbow < CFG.DOWN - CFG.HYST) {
-        if (++stable >= CFG.STABLE_N && now - lastRepAt > CFG.MIN_REP_MS) {
-          phase = 'down';
-          stable = 0;
-        }
-      } else {
-        stable = 0;
-      }
+        if (++stable >= CFG.STABLE_N && now - lastRepAt > CFG.MIN_REP_MS) { phase = 'down'; stable = 0; }
+      } else stable = 0;
     } else {
       if (elbow > CFG.UP + CFG.HYST) {
         if (++stable >= CFG.STABLE_N) {
-          phase = 'up';
-          stable = 0;
-          lastRepAt = now;
-          count++;
-          ui.count.textContent = count;
-          beep();
+          phase = 'up'; stable = 0; lastRepAt = now; count++;
+          ui.count.textContent = count; beep();
         }
-      } else {
-        stable = 0;
-      }
+      } else stable = 0;
     }
 
     setMsg(phase === 'down' ? "Sube ⬆️" : "Baja ⬇️", 'ok');
   }
 
   ui.startBtn.addEventListener('click', () => running ? stop() : start());
-
   ui.resetBtn.addEventListener('click', () => {
-    count = 0;
-    phase = 'up';
-    lastRepAt = 0;
-    smooth = null;
-    stable = 0;
-    buffer = [];
+    count = 0; phase = 'up'; lastRepAt = 0; smooth = null; stable = 0; buffer = [];
     ui.count.textContent = "0";
     ui.barFill.style.height = '0%';
     ui.barFill.classList.remove('full');

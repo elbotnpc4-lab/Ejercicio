@@ -2,127 +2,155 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Contador de flexiones 💪</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f14" />
+<title>Flexiones 💪</title>
 <style>
   :root{
-    --panel:#141a22; --line:#233040; --txt:#e6edf3; --dim:#8b98a9;
-    --accent:#22d3ee; --ok:#22c55e; --warn:#f59e0b;
+    --bg:#0b0f14; --panel:#131a22; --line:#1f2a36;
+    --txt:#e8eef5; --dim:#7d8b9c; --accent:#22d3ee; --ok:#22c55e; --warn:#f59e0b;
   }
-  *{box-sizing:border-box}
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
   body{
-    margin:0; min-height:100vh; padding:22px 16px 40px;
-    background:radial-gradient(900px 500px at 50% -10%, #16212e, #0b0f14 65%);
-    color:var(--txt);
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    display:flex; flex-direction:column; align-items:center; gap:16px;
+    margin:0; background:var(--bg); color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex; flex-direction:column;
+    padding:env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom));
+    gap:10px; overflow:hidden;
   }
-  h1{font-size:1.4rem; margin:0; font-weight:800; letter-spacing:.2px}
-  .sub{color:var(--dim); font-size:.86rem; text-align:center; max-width:620px; margin:0; line-height:1.5}
+
+  /* --- Barra superior compacta --- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 4px 2px; flex-shrink:0;
+  }
+  header h1{font-size:1rem; margin:0; font-weight:800; letter-spacing:.3px}
+  header .badge{
+    font-size:.7rem; padding:4px 10px; border-radius:999px;
+    background:var(--panel); border:1px solid var(--line); color:var(--dim);
+  }
+  header .badge.live{color:var(--ok); border-color:#1c4a2e; background:#0f1f16}
+
+  /* --- Video: ocupa el espacio disponible --- */
   .stage{
-    position:relative; width:min(94vw,760px); aspect-ratio:4/3;
-    background:#05070a; border:1px solid var(--line); border-radius:18px;
-    overflow:hidden; transform:scaleX(-1);            /* efecto espejo */
-    box-shadow:0 24px 60px rgba(0,0,0,.55);
+    position:relative; flex:1 1 auto; min-height:0;
+    background:#000; border:1px solid var(--line); border-radius:16px;
+    overflow:hidden; transform:scaleX(-1);
   }
-  #video, #canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+  #video,#canvas{position:absolute; inset:0; width:100%; height:100%; display:block; object-fit:cover}
   #canvas{pointer-events:none}
-  .stats{width:min(94vw,760px); display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:12px}
-  .card{
-    background:linear-gradient(180deg,#161d27,#121820);
-    border:1px solid var(--line); border-radius:14px; padding:12px 14px;
-    display:flex; flex-direction:column; gap:4px; min-height:84px; justify-content:center;
+
+  /* --- Contador flotante sobre el video --- */
+  .hud{
+    position:absolute; top:10px; left:10px; z-index:3;
+    transform:scaleX(-1); /* deshace el espejo */
+    background:rgba(10,15,20,.72); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.08); border-radius:14px;
+    padding:8px 14px; display:flex; flex-direction:column; gap:2px;
+    pointer-events:none;
   }
-  .card .label{font-size:.72rem; text-transform:uppercase; letter-spacing:.12em; color:var(--dim)}
-  .card .value{font-size:2rem; font-weight:800; line-height:1.05; font-variant-numeric:tabular-nums}
-  .card.count .value{color:var(--accent)}
-  .card .value.small{font-size:1.15rem}
-  .msgs{width:min(94vw,760px); display:flex; flex-direction:column; gap:6px; min-height:26px}
-  .msg{font-size:.9rem; display:flex; align-items:center; gap:8px; margin:0}
-  .msg.ok{color:var(--ok)} .msg.warn{color:var(--warn)} .msg.dim{color:var(--dim)}
-  .controls{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
+  .hud .n{font-size:2.4rem; font-weight:900; line-height:1; color:var(--accent); font-variant-numeric:tabular-nums}
+  .hud .l{font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--dim)}
+
+  /* --- Ángulo / fase abajo a la derecha --- */
+  .meta{
+    position:absolute; bottom:10px; right:10px; z-index:3;
+    transform:scaleX(-1);
+    display:flex; gap:6px;
+  }
+  .meta span{
+    background:rgba(10,15,20,.72); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.08); border-radius:10px;
+    padding:6px 10px; font-size:.78rem; font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .meta .ok{color:var(--ok)} .meta .warn{color:var(--warn)}
+
+  /* --- Aviso inferior --- */
+  #hint{
+    position:absolute; bottom:10px; left:10px; right:80px; z-index:3;
+    transform:scaleX(-1);
+    font-size:.78rem; color:var(--txt);
+    background:rgba(10,15,20,.72); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.08); border-radius:10px;
+    padding:6px 10px; margin:0;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #hint.warn{color:var(--warn)} #hint.ok{color:var(--ok)}
+
+  /* --- Botones simples --- */
+  .controls{display:flex; gap:10px; flex-shrink:0}
   button{
-    font:inherit; font-weight:700; cursor:pointer; border-radius:12px;
-    padding:12px 22px; border:1px solid transparent; transition:.15s;
+    flex:1; font:inherit; font-weight:800; font-size:.95rem;
+    padding:14px 16px; border-radius:14px; border:none;
+    cursor:pointer; transition:transform .1s, opacity .2s;
   }
-  button:active{transform:translateY(1px)}
-  button:disabled{opacity:.6; cursor:progress}
-  #startBtn{background:var(--accent); color:#04222a; box-shadow:0 8px 24px rgba(34,211,238,.25)}
-  #startBtn.stop{background:#ef4444; color:#fff; box-shadow:none}
-  #resetBtn{background:transparent; color:var(--txt); border-color:var(--line)}
-  .pop{animation:pop .28s ease}
-  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.28)}100%{transform:scale(1)}}
-  @media (max-width:520px){
-    .stats{grid-template-columns:1fr 1fr}
-    .card.count{grid-column:1/-1}
-  }
+  button:active{transform:scale(.97)} button:disabled{opacity:.5}
+  #startBtn{background:var(--accent); color:#04222a}
+  #startBtn.stop{background:#ef4444; color:#fff}
+  #resetBtn{background:var(--panel); color:var(--txt); border:1px solid var(--line)}
+
+  .pop{animation:pop .25s ease}
+  @keyframes pop{0%{transform:scale(1)}50%{transform:scale(1.3)}100%{transform:scale(1)}}
 </style>
 </head>
 <body>
 
-  <h1>💪 Contador de flexiones</h1>
-  <p class="sub">
-    Coloca el móvil/portátil <strong>de lado</strong> a ti (en el suelo o sobre una silla),
-    de forma que se vean <strong>hombro, codo, muñeca y cadera</strong>. Pulsa iniciar y ¡a darle!
-  </p>
+  <header>
+    <h1>💪 Flexiones</h1>
+    <span class="badge" id="status">Listo</span>
+  </header>
 
   <div class="stage">
     <video id="video" playsinline muted></video>
     <canvas id="canvas"></canvas>
-  </div>
 
-  <div class="stats">
-    <div class="card count">
-      <span class="label">Flexiones</span>
-      <span class="value" id="count">0</span>
+    <div class="hud">
+      <span class="n" id="count">0</span>
+      <span class="l">Flexiones</span>
     </div>
-    <div class="card">
-      <span class="label">Fase</span>
-      <span class="value small" id="stateTxt">—</span>
-    </div>
-    <div class="card">
-      <span class="label">Ángulo codo</span>
-      <span class="value small" id="angleTxt">—</span>
-    </div>
-  </div>
 
-  <div class="msgs">
-    <p class="msg dim" id="posture">Esperando cámara…</p>
-    <p class="msg dim" id="hint">Pulsa «Iniciar cámara»</p>
+    <div class="meta">
+      <span id="angleTxt">—°</span>
+      <span id="posture" class="ok">—</span>
+    </div>
+
+    <p id="hint">Pulsa Iniciar</p>
   </div>
 
   <div class="controls">
-    <button id="startBtn">Iniciar cámara</button>
-    <button id="resetBtn">Reiniciar contador</button>
+    <button id="startBtn">Iniciar</button>
+    <button id="resetBtn">Reiniciar</button>
   </div>
 
 <script type="module">
 import { PoseLandmarker, FilesetResolver, DrawingUtils }
   from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-/* ---------------- Elementos ---------------- */
-const video  = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const ctx    = canvas.getContext('2d');
-const stage  = document.querySelector('.stage');
-
+/* ---------- Elementos ---------- */
+const video   = document.getElementById('video');
+const canvas  = document.getElementById('canvas');
+const ctx     = canvas.getContext('2d');
 const ui = {
   count:    document.getElementById('count'),
-  stateTxt: document.getElementById('stateTxt'),
   angleTxt: document.getElementById('angleTxt'),
   posture:  document.getElementById('posture'),
   hint:     document.getElementById('hint'),
+  status:   document.getElementById('status'),
   startBtn: document.getElementById('startBtn'),
   resetBtn: document.getElementById('resetBtn'),
 };
 
-/* ---------------- Ajustes ---------------- */
-const DOWN_ANGLE = 100;   // codo doblado  -> fase "abajo"
-const UP_ANGLE   = 150;   // brazos rectos -> fase "arriba"
-const MIN_VIS    = 0.5;   // visibilidad mínima de las articulaciones
-const MIN_REP_MS = 350;   // tiempo mínimo entre repeticiones
+/* ---------- Ajustes ---------- */
+const DOWN_ANGLE = 95;    // codo doblado (abajo)
+const UP_ANGLE   = 155;   // brazos rectos (arriba)
+const HYST       = 8;     // histéresis: evita rebote en el umbral
+const MIN_VIS    = 0.45;  // visibilidad mínima
+const MIN_REP_MS = 300;   // tiempo mínimo entre reps
+const SMOOTH     = 0.6;   // suavizado (0 = nada, 1 = mucho)
 
-/* ---------------- Estado ---------------- */
+/* ---------- Estado ---------- */
 let poseLandmarker = null;
 let drawing = null;
 let stream = null;
@@ -130,39 +158,45 @@ let running = false;
 let lastVideoTime = -1;
 
 let count = 0;
-let phase = 'up';
+let phase = 'up';          // 'up' | 'down'
 let lastRepAt = 0;
+let smoothElbow = null;    // ángulo suavizado
 let audioCtx = null;
+let stableFrames = 0;      // frames consecutivos en el estado actual
 
-/* ---------------- Utilidades ---------------- */
+/* ---------- Utilidades ---------- */
 function angle3(a, b, c){
-  const v1 = { x:a.x-b.x, y:a.y-b.y, z:(a.z||0)-(b.z||0) };
-  const v2 = { x:c.x-b.x, y:c.y-b.y, z:(c.z||0)-(b.z||0) };
-  const dot = v1.x*v2.x + v1.y*v2.y + v1.z*v2.z;
-  const m = Math.hypot(v1.x,v1.y,v1.z) * Math.hypot(v2.x,v2.y,v2.z);
+  const v1x = a.x-b.x, v1y = a.y-b.y, v1z = (a.z||0)-(b.z||0);
+  const v2x = c.x-b.x, v2y = c.y-b.y, v2z = (c.z||0)-(b.z||0);
+  const dot = v1x*v2x + v1y*v2y + v1z*v2z;
+  const m = Math.hypot(v1x,v1y,v1z) * Math.hypot(v2x,v2y,v2z);
   if (!m) return 0;
   return Math.acos(Math.max(-1, Math.min(1, dot/m))) * 180 / Math.PI;
 }
 
-function beep(freq = 880, dur = 0.09, vol = 0.12){
+function beep(freq = 900, dur = 0.08, vol = 0.1){
   try{
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const o = audioCtx.createOscillator();
     const g = audioCtx.createGain();
-    o.type = 'sine';
-    o.frequency.value = freq;
+    o.type = 'sine'; o.frequency.value = freq;
     g.gain.setValueAtTime(vol, audioCtx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
     o.connect(g).connect(audioCtx.destination);
-    o.start();
-    o.stop(audioCtx.currentTime + dur);
-  }catch(e){ /* silencio */ }
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  }catch(e){}
 }
 
-const setHint    = (t, c='dim') => { ui.hint.textContent = t;    ui.hint.className = 'msg ' + c; };
-const setPosture = (t, c='dim') => { ui.posture.textContent = t; ui.posture.className = 'msg ' + c; };
+const setHint = (t, c='') => {
+  ui.hint.textContent = t;
+  ui.hint.className = c;
+};
+const setStatus = (t, live=false) => {
+  ui.status.textContent = t;
+  ui.status.className = 'badge' + (live ? ' live' : '');
+};
 
-/* ---------------- Cargar modelo ---------------- */
+/* ---------- Cargar modelo ---------- */
 async function loadModel(){
   const fileset = await FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
@@ -178,19 +212,25 @@ async function loadModel(){
   drawing = new DrawingUtils(ctx);
 }
 
-/* ---------------- Cámara ---------------- */
+/* ---------- Cámara ---------- */
 async function start(){
   ui.startBtn.disabled = true;
-
   try{
     if (!poseLandmarker){
-      ui.startBtn.textContent = "Cargando modelo…";
+      setStatus("Cargando…");
+      ui.startBtn.textContent = "Cargando…";
       await loadModel();
     }
 
-    ui.startBtn.textContent = "Encendiendo cámara…";
+    ui.startBtn.textContent = "Encendiendo…";
+    setStatus("Cámara…");
+
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+      video: {
+        facingMode: "user",
+        width:  { ideal: 960 },
+        height: { ideal: 1280 }
+      },
       audio: false
     });
 
@@ -199,20 +239,25 @@ async function start(){
 
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
-    stage.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
 
     running = true;
     lastVideoTime = -1;
+    smoothElbow = null;
+    phase = 'up';
+    stableFrames = 0;
+
     ui.startBtn.textContent = "Detener";
     ui.startBtn.classList.add('stop');
     ui.startBtn.disabled = false;
-    setHint("Buscando tu cuerpo…", "dim");
+    setStatus("Activo", true);
+    setHint("Colócate de lado 👀");
 
     requestAnimationFrame(loop);
   }catch(err){
     console.error(err);
     ui.startBtn.disabled = false;
     ui.startBtn.textContent = "Reintentar";
+    setStatus("Error");
     setHint("Error: " + err.message, "warn");
   }
 }
@@ -222,32 +267,32 @@ function stop(){
   if (stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
   video.srcObject = null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ui.startBtn.textContent = "Iniciar cámara";
+  ui.startBtn.textContent = "Iniciar";
   ui.startBtn.classList.remove('stop');
-  setHint("Cámara detenida", "dim");
-  setPosture("—", "dim");
-  ui.stateTxt.textContent = "—";
-  ui.angleTxt.textContent = "—";
+  setStatus("Listo");
+  setHint("Pulsa Iniciar");
+  ui.angleTxt.textContent = "—°";
+  ui.posture.textContent = "—";
+  ui.posture.className = 'ok';
 }
 
-/* ---------------- Bucle principal ---------------- */
+/* ---------- Loop ---------- */
 function loop(){
   if (!running) return;
 
   if (video.readyState >= 2 && video.videoWidth){
     if (video.currentTime !== lastVideoTime){
       lastVideoTime = video.currentTime;
-      let res = null;
       try{
-        res = poseLandmarker.detectForVideo(video, performance.now());
-      }catch(e){ console.error(e); }
-      if (res) handleResults(res);
+        const res = poseLandmarker.detectForVideo(video, performance.now());
+        handleResults(res);
+      }catch(e){ /* ignora frames malos */ }
     }
   }
   requestAnimationFrame(loop);
 }
 
-/* ---------------- Análisis ---------------- */
+/* ---------- Análisis ---------- */
 function handleResults(res){
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -255,76 +300,92 @@ function handleResults(res){
   const wl  = res.worldLandmarks?.[0];
 
   if (!lms){
-    setHint("No te veo 👀 — colócate dentro del encuadre", "warn");
+    setHint("No te veo 👀", "warn");
     return;
   }
 
-  // Dibujar esqueleto
+  // Esqueleto
   if (drawing){
     drawing.drawConnectors(lms, PoseLandmarker.POSE_CONNECTIONS,
-      { color: "#22d3ee", lineWidth: 4 });
+      { color: "#22d3ee", lineWidth: 3 });
     drawing.drawLandmarks(lms,
-      { color: "#e6edf3", fillColor: "#22d3ee", radius: 4, lineWidth: 0 });
+      { color: "#e8eef5", fillColor: "#22d3ee", radius: 3, lineWidth: 0 });
   }
 
-  // Elegimos el lado (izq/der) que mejor se ve
+  // Lado más visible
   const vis = i => lms[i]?.visibility ?? 0;
-  const leftScore  = (vis(11) + vis(13) + vis(15)) / 3;
-  const rightScore = (vis(12) + vis(14) + vis(16)) / 3;
-  const side = leftScore >= rightScore
+  const lScore = (vis(11)+vis(13)+vis(15))/3;
+  const rScore = (vis(12)+vis(14)+vis(16))/3;
+  const side = lScore >= rScore
     ? { s:11, e:13, w:15, h:23, k:27 }
     : { s:12, e:14, w:16, h:24, k:28 };
 
   const minVis = Math.min(vis(side.s), vis(side.e), vis(side.w), vis(side.h));
   if (minVis < MIN_VIS){
-    setHint("Colócate de lado a la cámara y que se vea todo el cuerpo", "warn");
+    setHint("De lado, cuerpo completo 📐", "warn");
     return;
   }
 
-  const P = (wl && wl.length) ? wl : lms;   // preferimos coordenadas 3D reales
-  const elbow = angle3(P[side.s], P[side.e], P[side.w]);  // hombro-codo-muñeca
-  const body  = angle3(P[side.s], P[side.h], P[side.k]);  // hombro-cadera-tobillo
+  const P = (wl && wl.length) ? wl : lms;
+  const rawElbow = angle3(P[side.s], P[side.e], P[side.w]);
+  const bodyAng  = angle3(P[side.s], P[side.h], P[side.k]);
 
+  // Suavizado exponencial
+  smoothElbow = (smoothElbow === null)
+    ? rawElbow
+    : smoothElbow * SMOOTH + rawElbow * (1 - SMOOTH);
+
+  const elbow = smoothElbow;
   ui.angleTxt.textContent = Math.round(elbow) + "°";
 
-  /* --- Postura --- */
-  if (body > 150){
-    setPosture("✅ Cuerpo alineado", "ok");
+  // Postura
+  if (bodyAng > 150){
+    ui.posture.textContent = "✅";
+    ui.posture.className = 'ok';
   } else {
-    setPosture("⚠️ Mantén la espalda recta (cadera alineada)", "warn");
+    ui.posture.textContent = "⚠️";
+    ui.posture.className = 'warn';
   }
 
-  /* --- Máquina de estados del contador --- */
+  /* ---- Contador con histéresis ---- */
   const now = performance.now();
 
-  if (phase === 'up' && elbow < DOWN_ANGLE && (now - lastRepAt) > MIN_REP_MS){
-    phase = 'down';
+  if (phase === 'up'){
+    // Para bajar, el codo debe cruzar DOWN_ANGLE - HYST y mantenerse
+    if (elbow < DOWN_ANGLE - HYST){
+      stableFrames++;
+      if (stableFrames >= 2 && (now - lastRepAt) > MIN_REP_MS){
+        phase = 'down';
+        stableFrames = 0;
+      }
+    } else {
+      stableFrames = 0;
+    }
+  } else { // 'down'
+    if (elbow > UP_ANGLE + HYST){
+      stableFrames++;
+      if (stableFrames >= 2){
+        phase = 'up';
+        stableFrames = 0;
+        lastRepAt = now;
+        count++;
+        ui.count.textContent = count;
+        ui.count.classList.add('pop');
+        setTimeout(()=>ui.count.classList.remove('pop'), 250);
+        beep(920, 0.08);
+      }
+    } else {
+      stableFrames = 0;
+    }
   }
 
-  if (phase === 'down' && elbow > UP_ANGLE){
-    phase = 'up';
-    lastRepAt = now;
-    count++;
-    ui.count.textContent = count;
-    ui.count.classList.add('pop');
-    setTimeout(() => ui.count.classList.remove('pop'), 280);
-    beep(920, 0.09);
-  }
-
-  ui.stateTxt.textContent = phase === 'down' ? "Abajo ⬇️" : "Arriba ⬆️";
-  setHint("¡Bien! Sigue así 🔥", "ok");
+  setHint(phase === 'down' ? "Abajo ⬇️" : "Arriba ⬆️", "ok");
 }
 
-/* ---------------- Botones ---------------- */
-ui.startBtn.addEventListener('click', () => {
-  if (running) stop();
-  else start();
-});
-
+/* ---------- Botones ---------- */
+ui.startBtn.addEventListener('click', () => running ? stop() : start());
 ui.resetBtn.addEventListener('click', () => {
-  count = 0;
-  phase = 'up';
-  lastRepAt = 0;
+  count = 0; phase = 'up'; lastRepAt = 0; smoothElbow = null; stableFrames = 0;
   ui.count.textContent = "0";
 });
 </script>
